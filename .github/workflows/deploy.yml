@@ -1,0 +1,76 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: 🚀 Deploy TechBlog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: client
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: client
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /var/www/techblog
+
+            # Pull latest code
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Install server deps
+            cd server && npm ci --omit=dev && cd ..
+
+            # Reload PM2
+            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+
+            # Reload NGINX
+            nginx -t && systemctl reload nginx
+
+            echo "✅ Deployed successfully!"
+
+      - name: Copy dist to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          port:     ${{ secrets.VPS_PORT || 22 }}
+          source:   "client/dist/*"
+          target:   "/var/www/techblog/client/dist"
+          strip_components: 2
+
+# ─── Required GitHub Secrets ──────────────────────────────────────────────────
+# VPS_HOST       — your VPS IP or domain (e.g., 203.0.113.10)
+# VPS_USER       — SSH user (e.g., ubuntu, root)
+# VPS_SSH_KEY    — private SSH key content
+# VPS_PORT       — SSH port (default 22)
+# VITE_API_URL   — your API base URL (e.g., https://yourdomain.com/api)

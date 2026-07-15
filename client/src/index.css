@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+* {
+  transition: var(--transition-theme);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #0ea5e9;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
+}
+
+/* Glass morphism & custom utilities */
+.glass-card {
+  @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-xl;
+}
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-purple-600;
+}
+.btn-primary {
+  @apply inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-primary-500 to-purple-600 text-white rounded-full font-bold shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-70 disabled:hover:translate-y-0;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-6 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-full font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300;
+}
+
+/* Prose styles for blog content */
+.prose {
+  @apply text-slate-700 dark:text-slate-300 leading-relaxed;
+}
+.prose h1 {
+  @apply text-3xl font-bold text-slate-900 dark:text-slate-100 mt-8 mb-4;
+}
+.prose h2 {
+  @apply text-2xl font-bold text-slate-900 dark:text-slate-100 mt-8 mb-4;
+}
+.prose h3 {
+  @apply text-xl font-semibold text-slate-900 dark:text-slate-100 mt-6 mb-3;
+}
+.prose h4 {
+  @apply text-lg font-semibold text-slate-900 dark:text-slate-100 mt-4 mb-2;
+}
+.prose p {
+  @apply mb-4 text-base leading-7;
+}
+.prose a {
+  @apply text-primary-500 hover:text-primary-600 underline underline-offset-2;
+}
+.prose strong {
+  @apply font-semibold text-slate-900 dark:text-slate-100;
+}
+.prose em {
+  @apply italic;
+}
+.prose ul {
+  @apply list-disc list-inside mb-4 space-y-1 pl-4;
+}
+.prose ol {
+  @apply list-decimal list-inside mb-4 space-y-1 pl-4;
+}
+.prose li {
+  @apply text-base leading-7;
+}
+.prose blockquote {
+  @apply border-l-4 border-primary-500 pl-4 py-1 my-4 italic text-slate-600 dark:text-slate-400 bg-primary-50 dark:bg-slate-800 rounded-r-lg;
+}
+.prose code {
+  @apply bg-slate-800 dark:bg-slate-900 text-primary-400 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+.prose pre {
+  @apply bg-slate-900 dark:bg-slate-950 text-slate-100 p-4 rounded-xl my-4 overflow-x-auto border border-slate-700;
+}
+.prose pre code {
+  @apply bg-transparent text-slate-100 p-0;
+}
+.prose hr {
+  @apply border-slate-200 dark:border-slate-700 my-8;
+}
+.prose img {
+  @apply rounded-xl my-6 w-full object-cover;
+}
+.prose table {
+  @apply w-full border-collapse my-6;
+}
+.prose th {
+  @apply bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold px-4 py-2 text-left border border-slate-200 dark:border-slate-700;
+}
+.prose td {
+  @apply px-4 py-2 border border-slate-200 dark:border-slate-700;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-violet-700 active:scale-95 transition-all duration-200 shadow-lg shadow-indigo-500/25 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all duration-200 border border-slate-200 dark:border-slate-700 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 active:scale-95 transition-all duration-200 shadow-lg shadow-red-500/25 disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+  .input-field {
+    @apply w-full px-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-slate-400 dark:placeholder-slate-500 transition-all duration-200;
+  }
+  .card {
+    @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm;
+  }
+}
