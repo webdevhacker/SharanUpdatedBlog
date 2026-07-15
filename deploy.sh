@@ -1,12 +1,17 @@
 #!/bin/bash
+
 # =============================================================================
 # TechBlog — Production Deploy Script
 # Usage: bash deploy.sh [--skip-build]
 # =============================================================================
+
 set -e
 
-APP_DIR="/var/www/techblog"
+APP_DIR="/var/www/blog.isharankumar.com"
 BRANCH="main"
+
+# Define your NGINX cache path here (if you use one)
+NGINX_CACHE_DIR="/var/cache/nginx"
 
 # Colors
 RED='\033[0;31m'
@@ -39,15 +44,28 @@ success "Code updated"
 log "Installing server dependencies..."
 cd "$APP_DIR/server"
 npm ci --omit=dev
+
+# NOTE: If you use a database ORM like Prisma or Sequelize,
+# you should run your migration commands right here.
+# e.g., npx prisma migrate deploy
+
 success "Server dependencies installed"
 
 # ── Build frontend (unless --skip-build) ─────────────────────────────────────
-if [[ "$1" != "--skip-build" ]]; then
+if [ "$1" != "--skip-build" ]; then
     log "Installing & building frontend..."
     cd "$APP_DIR/client"
     npm ci
     npm run build
     success "Frontend built → client/dist/"
+
+    # Optional: Clear NGINX cache so new frontend assets are served immediately
+    if [ -d "$NGINX_CACHE_DIR" ]; then
+        log "Clearing NGINX static cache..."
+        # Using sudo here in case the script is run as a normal user
+        sudo rm -rf ${NGINX_CACHE_DIR}/*
+        success "NGINX cache cleared"
+    fi
 else
     warn "Skipping frontend build (--skip-build)"
 fi
@@ -67,14 +85,17 @@ fi
 
 # ── Test & reload NGINX ───────────────────────────────────────────────────────
 log "Testing NGINX config..."
-nginx -t || error "NGINX config test failed!"
-systemctl reload nginx
+
+# We add 'sudo' here. If you run this script as a non-root user (which is safer),
+# standard users do not have permission to test or reload NGINX.
+sudo nginx -t || error "NGINX config test failed!"
+sudo systemctl reload nginx
 success "NGINX reloaded"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║       🚀 Deploy Complete! 🚀          ║${NC}"
+echo -e "${GREEN}║        🚀 Deploy Complete! 🚀        ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════╝${NC}"
 echo ""
 log "PM2 status:"
