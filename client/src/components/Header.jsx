@@ -9,6 +9,7 @@ import NotificationBell from './NotificationBell'
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/blog', label: 'Blog' },
+  { to: 'https://isharankumar.com', label: 'Portfolio', isExternal: true },
 ]
 
 export default function Header() {
@@ -52,17 +53,29 @@ export default function Header() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                  location.pathname === link.to
-                    ? 'bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-primary-400'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {link.label}
-              </Link>
+              link.isExternal ? (
+                <a
+                  key={link.to}
+                  href={link.to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                    location.pathname === link.to
+                      ? 'bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-primary-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </nav>
 
@@ -181,17 +194,29 @@ export default function Header() {
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`flex items-center px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
-                    location.pathname === link.to
-                    ? 'bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-primary-400'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {link.label}
-                </Link>
+                link.isExternal ? (
+                  <a
+                    key={link.to}
+                    href={link.to}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center px-4 py-3 rounded-xl font-medium transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                      location.pathname === link.to
+                      ? 'bg-primary-50 dark:bg-slate-800 text-primary-600 dark:text-primary-400'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                )
               ))}
               {!isAuthenticated && (
                 <div className="flex flex-col gap-2 pt-3 border-t border-slate-200 dark:border-slate-700 mt-3">
