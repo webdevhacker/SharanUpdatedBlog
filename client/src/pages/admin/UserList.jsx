@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import DataTable from '../../components/admin/DataTable';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import { format } from 'date-fns';
+import { confirmDialog } from '../../utils/confirmDialog';
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -36,42 +37,42 @@ const UserList = () => {
     return () => clearTimeout(timer);
   }, [page, search, roleFilter]);
 
-  const handleRoleChange = async (id, currentRole) => {
+  const handleRoleChange = (id, currentRole) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!window.confirm(`Are you sure you want to make this user an ${newRole}?`)) return;
-
-    try {
-      await adminApi.patch(`/users/${id}/role`, { role: newRole });
-      toast.success(`User role updated to ${newRole}`);
-      fetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update role');
-    }
+    confirmDialog(`Are you sure you want to make this user an ${newRole}?`, async () => {
+      try {
+        await adminApi.patch(`/users/${id}/role`, { role: newRole });
+        toast.success(`User role updated to ${newRole}`);
+        fetchUsers();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to update role');
+      }
+    });
   };
 
-  const handleBanToggle = async (id, isBanned) => {
+  const handleBanToggle = (id, isBanned) => {
     const action = isBanned ? 'Unban' : 'Ban';
-    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
-
-    try {
-      await adminApi.patch(`/users/${id}/ban`, { isBanned: !isBanned });
-      toast.success(`User ${isBanned ? 'unbanned' : 'banned'} successfully`);
-      fetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to ${action.toLowerCase()} user`);
-    }
+    confirmDialog(`Are you sure you want to ${action} this user?`, async () => {
+      try {
+        await adminApi.patch(`/users/${id}/ban`, { isBanned: !isBanned });
+        toast.success(`User ${isBanned ? 'unbanned' : 'banned'} successfully`);
+        fetchUsers();
+      } catch (err) {
+        toast.error(err.response?.data?.message || `Failed to ${action.toLowerCase()} user`);
+      }
+    });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('WARNING: This will permanently delete the user AND all their posts. Are you absolutely sure?')) return;
-    
-    try {
-      await adminApi.delete(`/users/${id}`);
-      toast.success('User deleted');
-      fetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete user');
-    }
+  const handleDelete = (id) => {
+    confirmDialog('WARNING: This will permanently delete the user AND all their posts. Are you absolutely sure?', async () => {
+      try {
+        await adminApi.delete(`/users/${id}`);
+        toast.success('User deleted');
+        fetchUsers();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to delete user');
+      }
+    });
   };
 
   const columns = [

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Profile routes.
  * All routes require authentication (protect middleware).
  * Avatar upload handled via multer (multipart/form-data).
@@ -15,6 +15,9 @@ const Notification = require("../models/Notification");
 const Session = require("../models/Session");
 const { sendPasswordResetEmail } = require("../utils/email");
 const { getClientInfo } = require("../utils/geoip");
+const speakeasy = require("speakeasy");
+const QRCode = require("qrcode");
+const bcrypt = require("bcryptjs");
 
 const router = express.Router();
 
@@ -261,6 +264,103 @@ router.post("/avatar", (req, res) => {
         .json({ success: false, message: "Server error." });
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// 2FA Endpoints
+// ---------------------------------------------------------------------------
+
+// 1. Setup Authenticator App
+router.post("/2fa/setup-app", async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({
+      name: `TechBlog (${req.user.email})`
+    });
+
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+    res.json({
+      success: true,
+      data: {
+        secret: secret.base32,
+        qrCodeUrl,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error setting up 2FA" });
+  }
+});
+
+// 2. Verify and Enable Authenticator App
+router.post("/2fa/verify-app", async (req, res) => {
+  try {
+    const { token, secret } = req.body;
+
+    const verified = speakeasy.totp.verify({
+      secret,
+      encoding: "base32",
+      token,
+      window: 1 // allow 30 seconds clock drift
+    });
+
+    if (!verified) {
+      return res.status(400).json({ success: false, message: "Invalid verification code" });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      twoFactorEnabled: true,
+      twoFactorMethod: "app",
+      twoFactorSecret: secret,
+    });
+
+    res.json({ success: true, message: "Authenticator App 2FA enabled successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error verifying 2FA" });
+  }
+});
+
+// 3. Enable Email OTP 2FA
+router.post("/2fa/enable-email", async (req, res) => {
+  try {
+    // The user's email is already verified at registration. We just enable it.
+    await User.findByIdAndUpdate(req.user._id, {
+      twoFactorEnabled: true,
+      twoFactorMethod: "email",
+      twoFactorSecret: "", // clear secret if switching from app
+    });
+
+    res.json({ success: true, message: "Email 2FA enabled successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error enabling Email 2FA" });
+  }
+});
+
+// 4. Disable 2FA
+router.delete("/2fa", async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required to disable 2FA" });
+    }
+
+    // Verify password first
+    const user = await User.findById(req.user._id).select("+password");
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Incorrect password" });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      twoFactorEnabled: false,
+      twoFactorMethod: "none",
+      twoFactorSecret: "",
+    });
+
+    res.json({ success: true, message: "2FA disabled successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error disabling 2FA" });
+  }
 });
 
 module.exports = router;

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * User Mongoose model.
  * Handles authentication fields, profile data, roles, and password hashing.
  */
@@ -65,6 +65,18 @@ const userSchema = new mongoose.Schema(
     isBanned: {
       type: Boolean,
       default: false,
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorMethod: {
+      type: String,
+      enum: ["none", "email", "app"],
+      default: "none",
+    },
+    twoFactorSecret: {
+      type: String,
     },
   },
   {

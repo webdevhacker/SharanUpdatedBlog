@@ -5,6 +5,7 @@ import { adminApi, blogApi } from '../../utils/api';
 import { toast } from 'react-hot-toast';
 import DataTable from '../../components/admin/DataTable';
 import { format } from 'date-fns';
+import { confirmDialog } from '../../utils/confirmDialog';
 
 const PostList = () => {
   const [posts, setPosts] = useState([]);
@@ -37,16 +38,16 @@ const PostList = () => {
     return () => clearTimeout(timer);
   }, [page, search, statusFilter]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
-    
-    try {
-      await blogApi.delete(`/posts/${id}`);
-      toast.success('Post deleted');
-      fetchPosts();
-    } catch (err) {
-      toast.error('Failed to delete post');
-    }
+  const handleDelete = (id) => {
+    confirmDialog('Are you sure you want to delete this post?', async () => {
+      try {
+        await blogApi.delete(`/posts/${id}`);
+        toast.success('Post deleted');
+        fetchPosts();
+      } catch (err) {
+        toast.error('Failed to delete post');
+      }
+    });
   };
 
   const handleToggleStatus = async (id, currentStatus) => {

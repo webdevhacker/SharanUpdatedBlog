@@ -4,6 +4,7 @@ import { FiPlus, FiTrash2, FiTag } from 'react-icons/fi'
 import { categoryApi } from '../../utils/api'
 import toast from 'react-hot-toast'
 import Modal from '../../components/Modal'
+import { confirmDialog } from '../../utils/confirmDialog'
 
 export default function CategoryList() {
   const [categories, setCategories] = useState([])
@@ -45,16 +46,16 @@ export default function CategoryList() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this category? Posts with this category will be marked as Uncategorized.')) return
-
-    try {
-      await categoryApi.delete(`/${id}`)
-      toast.success('Category deleted')
-      fetchCategories()
-    } catch (err) {
-      toast.error('Failed to delete category')
-    }
+  const handleDelete = (id) => {
+    confirmDialog('Are you sure you want to delete this category? Posts with this category will be marked as Uncategorized.', async () => {
+      try {
+        await categoryApi.delete(`/${id}`)
+        toast.success('Category deleted')
+        fetchCategories()
+      } catch (err) {
+        toast.error('Failed to delete category')
+      }
+    });
   }
 
   return (

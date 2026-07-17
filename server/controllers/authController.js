@@ -1,10 +1,11 @@
-﻿/**
+/**
  * Auth controller.
  * Handles registration, OTP verification, login, token refresh,
  * logout, forgot-password, reset-password, and getMe.
  */
 
 const jwt = require("jsonwebtoken");
+const speakeasy = require("speakeasy");
 const User = require("../models/User");
 const OTP = require("../models/OTP");
 const Session = require("../models/Session");
@@ -235,6 +236,76 @@ const verifyOtp = async (req, res) => {
  * - Issues accessToken + refreshToken
  * - Sends login alert email (non-blocking)
  */
+
+const completeLoginSession = async (req, res, user) => {
+  const clientInfo = getClientInfo(req);
+  const timestamp = formatTimestamp();
+
+  const refreshToken = signRefreshToken(user._id.toString());
+
+  const session = await Session.create({
+    userId: user._id,
+    refreshToken,
+    ip: clientInfo.ip,
+    city: clientInfo.city,
+    country: clientInfo.country,
+    browser: clientInfo.browser,
+    os: clientInfo.os,
+    device: clientInfo.device,
+  });
+
+  const accessToken = signAccessToken(
+    user._id.toString(),
+    session._id.toString()
+  );
+
+  await Notification.create({
+    userId: user._id,
+    type: 'login',
+    title: 'New Sign-in',
+    message: `New sign-in from ${clientInfo.browser} on ${clientInfo.os} (${clientInfo.location}).`,
+    metadata: {
+      ip: clientInfo.ip,
+      location: clientInfo.location,
+      browser: clientInfo.browser,
+      os: clientInfo.os,
+      device: clientInfo.device,
+      timestamp,
+    },
+  });
+
+  sendLoginAlertEmail({
+    to: user.email,
+    name: user.name,
+    clientInfo: { ...clientInfo, timestamp },
+  }).catch(console.error);
+
+  if (!user.twoFactorEnabled) {
+    await Notification.create({
+      userId: user._id,
+      type: "security_alert",
+      title: "Enhance Your Security",
+      message: "Please set up Two-Factor Authentication (2FA) in Account Settings to secure your account.",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    accessToken,
+    refreshToken,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      isVerified: user.isVerified,
+      twoFactorEnabled: user.twoFactorEnabled,
+    },
+  });
+};
+
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -281,66 +352,31 @@ const login = async (req, res) => {
       });
     }
 
-    // Collect client info
-    const clientInfo = getClientInfo(req);
-    const timestamp = formatTimestamp();
+    
+    // Check 2FA
+    if (user.twoFactorEnabled && user.twoFactorMethod !== "none") {
+      const tempToken = jwt.sign(
+        { temp: true, userId: user._id.toString() },
+        process.env.JWT_SECRET,
+        { expiresIn: "5m" }
+      );
+      
+      if (user.twoFactorMethod === "email") {
+        const otp = generateOTP();
+        await OTP.deleteMany({ email: user.email, purpose: "2fa" });
+        await OTP.create({ email: user.email, otp, purpose: "2fa" });
+        sendOTPVerifyEmail({ to: user.email, name: user.name, otp }).catch(console.error);
+      }
 
-    // Generate tokens
-    const refreshToken = signRefreshToken(user._id.toString());
+      return res.status(200).json({
+        success: true,
+        requires2FA: true,
+        method: user.twoFactorMethod,
+        tempToken,
+      });
+    }
 
-    // Persist session first (need _id to embed in access token)
-    const session = await Session.create({
-      userId: user._id,
-      refreshToken,
-      ip: clientInfo.ip,
-      city: clientInfo.city,
-      country: clientInfo.country,
-      browser: clientInfo.browser,
-      os: clientInfo.os,
-      device: clientInfo.device,
-    });
-
-    const accessToken = signAccessToken(
-      user._id.toString(),
-      session._id.toString()
-    );
-
-    // Create login notification
-    await Notification.create({
-      userId: user._id,
-      type: "login",
-      title: "New Sign-in",
-      message: `New sign-in from ${clientInfo.browser} on ${clientInfo.os} (${clientInfo.location}).`,
-      metadata: {
-        ip: clientInfo.ip,
-        location: clientInfo.location,
-        browser: clientInfo.browser,
-        os: clientInfo.os,
-        device: clientInfo.device,
-        timestamp,
-      },
-    });
-
-    // Send login alert email (non-blocking)
-    sendLoginAlertEmail({
-      to: user.email,
-      name: user.name,
-      clientInfo: { ...clientInfo, timestamp },
-    }).catch(console.error);
-
-    return res.status(200).json({
-      success: true,
-      accessToken,
-      refreshToken,
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        role: user.role,
-        isVerified: user.isVerified,
-      },
-    });
+    return completeLoginSession(req, res, user);
   } catch (error) {
     console.error("login error:", error);
     return res.status(500).json({ success: false, message: "Server error." });
@@ -639,7 +675,56 @@ const getMe = async (req, res) => {
   }
 };
 
+
+const verify2fa = async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+    if (!tempToken || !code) {
+      return res.status(400).json({ success: false, message: "Token and code are required." });
+    }
+
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    if (!decoded.temp || !decoded.userId) {
+      return res.status(400).json({ success: false, message: "Invalid token." });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found." });
+    }
+
+    if (user.twoFactorMethod === "app") {
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: "base32",
+        token: code,
+        window: 1,
+      });
+      if (!verified) {
+        return res.status(400).json({ success: false, message: "Invalid authenticator code." });
+      }
+    } else if (user.twoFactorMethod === "email") {
+      const otpRecord = await OTP.findOne({ email: user.email.toLowerCase(), purpose: "2fa" });
+      if (!otpRecord) {
+        return res.status(400).json({ success: false, message: "Code expired or invalid." });
+      }
+      if (otpRecord.otp !== code.trim()) {
+        return res.status(400).json({ success: false, message: "Invalid OTP code." });
+      }
+      await OTP.findByIdAndDelete(otpRecord._id);
+    } else {
+      return res.status(400).json({ success: false, message: "2FA not configured." });
+    }
+
+    return completeLoginSession(req, res, user);
+  } catch (error) {
+    console.error("verify2fa error:", error);
+    return res.status(500).json({ success: false, message: "Invalid or expired token." });
+  }
+};
+
 module.exports = {
+  verify2fa,
   register,
   verifyOtp,
   login,

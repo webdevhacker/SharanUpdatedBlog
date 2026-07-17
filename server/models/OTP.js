@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OTP Mongoose model.
  * Stores one-time passwords for email verification and password reset.
  * MongoDB TTL index auto-deletes documents after 11 minutes.
@@ -19,7 +19,7 @@ const otpSchema = new mongoose.Schema({
   },
   purpose: {
     type: String,
-    enum: ["verify", "reset"],
+    enum: ["verify", "reset", "2fa"],
     required: [true, "Purpose is required"],
   },
   expiresAt: {

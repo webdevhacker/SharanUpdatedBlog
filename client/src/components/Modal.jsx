@@ -13,16 +13,17 @@ export default function Modal({ isOpen, onClose, title, children }) {
             onClick={onClose}
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100]"
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl z-[101] overflow-hidden border border-white/20 dark:border-slate-700/50"
-          >
-            {/* Decorative top gradient bar */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-primary-500 to-purple-600" />
+          <div className="fixed inset-0 z-[101] overflow-y-auto flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-white/20 dark:border-slate-700/50 pointer-events-auto my-8"
+            >
+              {/* Decorative top gradient bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-primary-500 to-purple-600" />
             
-            <div className="p-8">
+            <div className="p-6 sm:p-8">
               {/* Close Button */}
               <button
                 type="button"
@@ -48,6 +49,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
               {children}
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

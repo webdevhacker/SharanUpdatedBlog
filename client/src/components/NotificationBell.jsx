@@ -10,6 +10,7 @@ const notifIcon = (type) => {
   if (type === 'password_change') return '🔑'
   if (type === 'otp_sent') return '✉️'
   if (type === 'account_verified') return '✅'
+  if (type === 'security_alert') return '🛡️'
   return '🔔'
 }
 
@@ -63,6 +64,8 @@ export default function NotificationBell() {
       navigate('/profile#sessions')
     } else if (notif.type === 'password_change') {
       navigate('/forgot-password')
+    } else if (notif.type === 'security_alert') {
+      navigate('/profile#security')
     }
   }
 

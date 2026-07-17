@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { FiUser, FiLock, FiMonitor, FiCamera, FiCheck, FiLogOut } from 'react-icons/fi';
+import Modal from '../components/Modal';
+import { FiUser, FiLock, FiMonitor, FiCamera, FiCheck, FiLogOut, FiMail } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { profileApi, sessionApi, notificationApi } from '../utils/api';
 import SessionCard from '../components/SessionCard';
@@ -45,6 +46,16 @@ const AccountSettings = () => {
   // Sessions state
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+
+  const [isProcessing2FA, setIsProcessing2FA] = useState(false);
+  const [showMethodModal, setShowMethodModal] = useState(false);
+  const [showAppModal, setShowAppModal] = useState(false);
+  const [showDisableModal, setShowDisableModal] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [appSecret, setAppSecret] = useState('');
+  const [appCode, setAppCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+
 
   useEffect(() => {
     if (activeTab === 'security') fetchNotifications();
@@ -125,6 +136,74 @@ const AccountSettings = () => {
       toast.error(err.response?.data?.message || 'Failed to update password');
     } finally {
       setSavingPassword(false);
+    }
+  };
+
+
+  const handleToggleChange = () => {
+    if (user?.twoFactorEnabled) {
+      setShowDisableModal(true);
+    } else {
+      setShowMethodModal(true);
+    }
+  };
+
+  const handleSetupApp2FA = async () => {
+    try {
+      setIsProcessing2FA(true);
+      const res = await profileApi.post('/2fa/setup-app');
+      setQrCodeUrl(res.data.data.qrCodeUrl);
+      setAppSecret(res.data.data.secret);
+      setShowAppModal(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to initiate 2FA setup');
+    } finally {
+      setIsProcessing2FA(false);
+    }
+  };
+
+  const handleVerifyApp2FA = async (e) => {
+    e.preventDefault();
+    try {
+      setIsProcessing2FA(true);
+      await profileApi.post('/2fa/verify-app', { token: appCode });
+      toast.success('Authenticator App enabled successfully');
+      setShowAppModal(false);
+      setAppCode('');
+      loadUser();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid code');
+    } finally {
+      setIsProcessing2FA(false);
+    }
+  };
+
+  const handleEnableEmail2FA = async () => {
+    try {
+      setIsProcessing2FA(true);
+      await profileApi.post('/2fa/enable-email');
+      toast.success('Email 2FA enabled successfully');
+      loadUser();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to enable email 2FA');
+    } finally {
+      setIsProcessing2FA(false);
+    }
+  };
+
+  const handleDisable2FA = async (e) => {
+    e.preventDefault();
+    try {
+      setIsProcessing2FA(true);
+      await profileApi.delete('/2fa', { data: { password: disablePassword } });
+      toast.success('2FA disabled successfully');
+      setShowDisableModal(false);
+      setDisablePassword('');
+      loadUser();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to disable 2FA');
+    } finally {
+      setIsProcessing2FA(false);
     }
   };
 
@@ -299,6 +378,37 @@ const AccountSettings = () => {
                 </form>
               </div>
 
+
+              {/* 2FA Section */}
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mb-6">
+                <div className="flex items-center justify-between p-5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-900 dark:text-white">Two-Factor Authentication (2FA)</h3>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {user?.twoFactorEnabled 
+                        ? `Enabled using ${user?.twoFactorMethod === 'app' ? 'Authenticator App' : 'Email OTP'}`
+                        : 'Protect your account from unauthorized access.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={user?.twoFactorEnabled}
+                    onClick={handleToggleChange}
+                    disabled={isProcessing2FA}
+                    className={`${
+                      user?.twoFactorEnabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
+                    } relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${isProcessing2FA ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span
+                      className={`${
+                        user?.twoFactorEnabled ? 'translate-x-5' : 'translate-x-0'
+                      } pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div>
                   <h3 className="text-lg font-medium text-red-600 dark:text-red-400 border-b border-slate-200 dark:border-slate-700 pb-2">Danger Zone</h3>
@@ -371,6 +481,105 @@ const AccountSettings = () => {
           )}
 
         </div>
+
+          {/* 2FA Method Selection Modal */}
+          <Modal isOpen={showMethodModal} onClose={() => setShowMethodModal(false)} title="Choose 2FA Method">
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                Select how you would like to receive your two-factor authentication codes.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button 
+                  onClick={() => { setShowMethodModal(false); handleSetupApp2FA(); }}
+                  className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 flex flex-col items-center bg-white dark:bg-slate-800 hover:border-indigo-500 hover:ring-1 hover:ring-indigo-500 transition-all text-left"
+                >
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4">
+                    <FiMonitor size={24} />
+                  </div>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Authenticator App</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center">Google Authenticator, Authy, etc.</p>
+                </button>
+
+                <button 
+                  onClick={() => { setShowMethodModal(false); handleEnableEmail2FA(); }}
+                  className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 flex flex-col items-center bg-white dark:bg-slate-800 hover:border-indigo-500 hover:ring-1 hover:ring-indigo-500 transition-all text-left"
+                >
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 mb-4">
+                    <FiMail size={24} />
+                  </div>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-1">Email OTP</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center">Receive codes in your inbox.</p>
+                </button>
+              </div>
+              <div className="flex justify-end pt-4">
+                <button type="button" onClick={() => setShowMethodModal(false)} className="btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </Modal>
+
+          {/* 2FA App Setup Modal */}
+          <Modal isOpen={showAppModal} onClose={() => setShowAppModal(false)} title="Setup Authenticator App">
+            <form onSubmit={handleVerifyApp2FA} className="space-y-6">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="mb-2">1. Install an authenticator app like Google Authenticator or Authy on your mobile device.</p>
+                <p>2. Scan the QR code below with the app.</p>
+              </div>
+              
+              <div className="flex justify-center bg-white p-4 rounded-xl border border-slate-200 dark:border-slate-700 mx-auto max-w-[250px]">
+                {qrCodeUrl ? <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48 max-w-full" /> : <div className="w-48 h-48 animate-pulse bg-slate-100 rounded-lg max-w-full"></div>}
+              </div>
+
+              <div className="text-center text-xs text-slate-500 font-mono">
+                Or enter this code manually:<br/>
+                <span className="font-bold text-slate-800 dark:text-slate-200 select-all break-all">{appSecret}</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">3. Enter the 6-digit code from the app</label>
+                <input
+                  type="text"
+                  required
+                  value={appCode}
+                  onChange={(e) => setAppCode(e.target.value.replace(/\D/g, '').slice(0,6))}
+                  className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500 text-center font-mono tracking-[0.5em] text-xl h-12"
+                  placeholder="000000"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowAppModal(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={isProcessing2FA || appCode.length !== 6} className="btn-primary">
+                  {isProcessing2FA ? 'Verifying...' : 'Verify & Enable'}
+                </button>
+              </div>
+            </form>
+          </Modal>
+
+          {/* Disable 2FA Modal */}
+          <Modal isOpen={showDisableModal} onClose={() => setShowDisableModal(false)} title="Disable Two-Factor Authentication">
+            <form onSubmit={handleDisable2FA} className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Please enter your password to confirm you want to disable 2FA. This will make your account less secure.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white focus:border-red-500 focus:ring-red-500"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setShowDisableModal(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={isProcessing2FA || !disablePassword} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50 font-medium transition-colors">
+                  {isProcessing2FA ? 'Disabling...' : 'Disable 2FA'}
+                </button>
+              </div>
+            </form>
+          </Modal>
+
       </div>
     </div>
   );

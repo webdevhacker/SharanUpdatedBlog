@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Notification Mongoose model.
  * Stores in-app notifications for users (login alerts, password changes, etc.)
  */
@@ -14,7 +14,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["login", "password_change", "otp_sent", "account_verified"],
+      enum: ["login", "password_change", "otp_sent", "account_verified", "security_alert"],
       required: [true, "Notification type is required"],
     },
     title: {

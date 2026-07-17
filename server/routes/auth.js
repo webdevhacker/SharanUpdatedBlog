@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Auth routes.
  * Mounts all authentication controller functions.
  * Rate-limiting applied to sensitive mutation endpoints.
@@ -16,6 +16,7 @@ const {
   forgotPassword,
   resetPassword,
   getMe,
+  verify2fa,
 } = require("../controllers/authController");
 
 const { protect } = require("../middleware/auth");
@@ -47,6 +48,7 @@ const authLimiter = rateLimit({
 router.post("/register", authLimiter, register);
 router.post("/verify-otp", verifyOtp);
 router.post("/login", authLimiter, login);
+router.post("/verify-2fa", authLimiter, verify2fa);
 router.post("/refresh", refresh);
 router.post("/forgot-password", authLimiter, forgotPassword);
 router.post("/reset-password", authLimiter, resetPassword);
