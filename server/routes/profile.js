@@ -295,12 +295,14 @@ router.post("/2fa/setup-app", async (req, res) => {
 router.post("/2fa/verify-app", async (req, res) => {
   try {
     const { token, secret } = req.body;
+    // Remove any spaces the user might have accidentally typed (e.g., "123 456")
+    const cleanToken = String(token).replace(/\s+/g, "");
 
     const verified = speakeasy.totp.verify({
       secret,
       encoding: "base32",
-      token,
-      window: 1 // allow 30 seconds clock drift
+      token: cleanToken,
+      window: 2 // allow up to 1 minute of clock drift on VPS
     });
 
     if (!verified) {

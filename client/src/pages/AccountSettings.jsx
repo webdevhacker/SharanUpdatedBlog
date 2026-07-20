@@ -35,6 +35,20 @@ const AccountSettings = () => {
     github: user?.github || '',
     linkedin: user?.linkedin || ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || '',
+        bio: user.bio || '',
+        website: user.website || '',
+        twitter: user.twitter || '',
+        github: user.github || '',
+        linkedin: user.linkedin || ''
+      });
+    }
+  }, [user]);
+
   const [savingProfile, setSavingProfile] = useState(false);
   const fileInputRef = useRef(null);
 

@@ -694,11 +694,14 @@ const verify2fa = async (req, res) => {
     }
 
     if (user.twoFactorMethod === "app") {
+      // Remove spaces if any
+      const cleanToken = String(code).replace(/\s+/g, "");
+
       const verified = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: "base32",
-        token: code,
-        window: 1,
+        token: cleanToken,
+        window: 2,
       });
       if (!verified) {
         return res.status(400).json({ success: false, message: "Invalid authenticator code." });
