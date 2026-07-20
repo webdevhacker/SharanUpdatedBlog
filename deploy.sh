@@ -48,7 +48,7 @@ npm ci --omit=dev
 # NOTE: If you use a database ORM like Prisma or Sequelize,
 # you should run your migration commands right here.
 # e.g., npx prisma migrate deploy
-
+npm install multer
 success "Server dependencies installed"
 
 # ── Build frontend (unless --skip-build) ─────────────────────────────────────
